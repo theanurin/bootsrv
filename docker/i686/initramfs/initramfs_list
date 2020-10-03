@@ -1,0 +1,67 @@
+# https://wiki.gentoo.org/wiki/Early_Userspace_Mounting
+
+# directory structure
+dir /proc        755 0 0
+dir /usr         755 0 0
+dir /bin         755 0 0
+dir /sys         755 0 0
+dir /var         755 0 0
+dir /lib         755 0 0
+dir /lib/modules 755 0 0
+dir /sbin        755 0 0
+#dir /lib64       755 0 0
+#dir /lib32       755 0 0
+dir /mnt         755 0 0
+dir /mnt/root    755 0 0
+dir /etc         755 0 0
+dir /root        700 0 0
+dir /dev         755 0 0
+
+# busybox
+file /bin/busybox /bin/busybox 755 0 0
+
+# libraries required by /sbin/fsck.ext4 and /sbin/fsck
+file    /lib/ld-linux.so.2                      /lib/ld-linux.so.2                  755 0 0
+file    /lib/libext2fs.so.2                     /lib/libext2fs.so.2                 755 0 0
+file    /lib/libcom_err.so.2                    /lib/libcom_err.so.2                755 0 0
+file    /lib/libpthread.so.0                    /lib/libpthread.so.0                755 0 0
+file    /lib/libblkid.so.1                      /lib/libblkid.so.1                  755 0 0
+file    /lib/libmount.so.1                      /lib/libmount.so.1                  755 0 0
+file    /lib/libuuid.so.1                       /lib/libuuid.so.1                   755 0 0
+file    /lib/libe2p.so.2                        /lib/libe2p.so.2                    755 0 0
+file    /lib/libc.so.6                          /lib/libc.so.6                      755 0 0
+file    /lib/librt.so.1                         /lib/librt.so.1                     755 0 0
+file    /lib/libdl.so.2                         /lib/libdl.so.2                     755 0 0
+file    /sbin/e2fsck                            /sbin/e2fsck                        755 0 0
+file    /sbin/fsck                              /sbin/fsck                          755 0 0
+file    /sbin/fsck.ext4                         /sbin/fsck.ext4                     755 0 0
+file    /sbin/mkfs                              /sbin/mkfs                          755 0 0
+file    /sbin/mkfs.ext4                         /sbin/mkfs.ext4                     755 0 0
+file    /sbin/resize2fs                         /sbin/resize2fs                     755 0 0
+
+# Disk partition tools
+file    /lib/libfdisk.so.1                      /lib/libfdisk.so.1                  755 0 0
+file    /lib/libsmartcols.so.1                  /lib/libsmartcols.so.1              755 0 0
+file    /lib/libtinfow.so.6                     /lib/libtinfow.so.6                 755 0 0
+file    /lib/libreadline.so.7                   /lib/libreadline.so.7               755 0 0
+file    /sbin/fdisk                             /sbin/fdisk                         755 0 0
+file    /sbin/sfdisk                            /sbin/sfdisk                        755 0 0
+
+# LVM stuff
+dir     /etc/lvm                                                                    755 0 0
+file    /etc/lvm/lvm.conf                       /etc/lvm/lvm.conf                   755 0 0
+file    /sbin/lvm                               /sbin/lvm.static                    755 0 0
+slink   /sbin/lvcreate                          /sbin/lvm                           755 0 0
+slink   /sbin/lvextend                          /sbin/lvm                           755 0 0
+slink   /sbin/lvresize                          /sbin/lvm                           755 0 0
+slink   /sbin/lvs                               /sbin/lvm                           755 0 0
+slink   /sbin/pvcreate                          /sbin/lvm                           755 0 0
+slink   /sbin/pvresize                          /sbin/lvm                           755 0 0
+slink   /sbin/vgchange                          /sbin/lvm                           755 0 0
+slink   /sbin/vgcreate                          /sbin/lvm                           755 0 0
+slink   /sbin/vgdisplay                         /sbin/lvm                           755 0 0
+slink   /sbin/vgscan                            /sbin/lvm                           755 0 0
+
+#
+# NOTE: /init and modules will are added automatically
+#

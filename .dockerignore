@@ -1,5 +1,4 @@
 .data
 .git
 .gitignore
-docker/i686/boot
-README*
+*.md

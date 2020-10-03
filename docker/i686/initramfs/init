@@ -1,0 +1,120 @@
+#!/bin/busybox sh
+
+mount -t devtmpfs none /dev
+
+#[ -c /dev/null ]    || mknod -m 666 /dev/null c 1 3
+#[ -c /dev/console ] || mknod -m 600 /dev/console c 5 1
+
+mount -t proc none /proc
+mount -t sysfs none /sys
+
+echo 0 > /proc/sys/kernel/printk
+
+# Set up busybox'es symlinks
+/bin/busybox --install -s
+
+#echo /sbin/mdev > /proc/sys/kernel/hotplug
+/bin/busybox mdev -s || /bin/sh
+
+echo "Activating Volume Groups..."
+/sbin/vgchange --activate y vgsys || /bin/sh
+
+echo "Making nodes for Volume Group devices..."
+/sbin/vgscan --mknodes || /bin/sh
+
+echo "Mounting the root filesystem in RO mode..."
+mount -o ro /dev/vgsys/root /mnt/root || /bin/sh
+if [ -f /mnt/root/SETUP.0a0507ad-7184-4f5a-837c-96cb1d612505 ]; then
+	echo "Entering setup mode..."
+
+	echo "Umounting the root filesystem..."
+	umount /mnt/root || /bin/sh
+
+	echo "Deactivating Volume Groups..."
+	/sbin/vgchange --activate n vgsys || /bin/sh
+
+	echo "Extending /dev/sda2 partitions and Physical Volume to size 4G... "
+	echo ",4G" | /sbin/sfdisk -N 2 /dev/sda
+	/sbin/pvresize /dev/sda2 || /bin/sh
+
+	if ! /sbin/sfdisk --part-type /dev/sda 3 >/dev/null 2>&1; then
+		echo
+		echo "[User's partition] No user's data volume. Entering setup user's filesystem /dev/vgdata/data ..."
+		echo
+
+		echo "[User's partition] Creating /dev/sda3 with maximum size..."
+		echo ",+" | /sbin/sfdisk -N 3 /dev/sda
+		/sbin/sfdisk --part-type /dev/sda 3 8e || /bin/sh
+
+		echo "[User's partition] Creating Physical Volume on /dev/sda3 ..."
+		/sbin/pvcreate /dev/sda3 || /bin/sh
+
+		echo "[User's partition] Creating Volume Group 'vgdata' on /dev/sda3 ..."
+		/sbin/vgcreate vgdata /dev/sda3 || /bin/sh
+
+		echo "[User's partition] Logical Volume Group 'data' on 'vgdata' ..."
+		/sbin/lvcreate --name data --extents 100%FREE --zero n vgdata || /bin/sh
+
+		echo "[User's partition] Activating Volume Group 'vgdata' ..."
+		/sbin/vgchange --activate y vgdata || /bin/sh
+
+		echo "[User's partition] Making nodes for Volume Group devices..."
+		/sbin/vgscan --mknodes || /bin/sh
+
+		echo "[User's partition] Creating ext4 filesystem on /dev/vgdata/data ..." || /bin/sh
+		/sbin/mkfs.ext4 -L data /dev/vgdata/data || /bin/sh
+
+		echo "[User's partition] Deactivating Volume Group 'vgdata' ..."
+		/sbin/vgchange --activate n vgdata || /bin/sh
+
+		echo "[User's partition] Done"
+	fi
+
+	echo "Re-activating Volume Group 'vgsys' ..."
+	/sbin/vgchange --activate y vgsys || /bin/sh
+
+	echo "Making nodes for Volume Group devices..."
+	/sbin/vgscan --mknodes || /bin/sh
+
+	echo "Extenting Logical Volume /dev/vgsys/root to maximum size..."
+	/sbin/lvextend -l +100%FREE /dev/vgsys/root || /bin/sh
+
+	echo "Force check file root /dev/vgsys/root..."
+	/sbin/e2fsck -f /dev/vgsys/root || /bin/sh
+
+	echo "Extenting file root /dev/vgsys/root to maximum size..."
+	/sbin/resize2fs /dev/vgsys/root || /bin/sh
+
+	echo "Mounting the root filesystem in RW mode..."
+	mount -o rw /dev/vgsys/root /mnt/root || /bin/sh
+
+	echo "Coping kernel modules..."
+	cp -a /lib/modules /mnt/root/lib || /bin/sh
+
+	echo "Removing setup marker /SETUP.0a0507ad-7184-4f5a-837c-96cb1d612505 ..."
+	rm /mnt/root/SETUP.0a0507ad-7184-4f5a-837c-96cb1d612505 || /bin/sh
+
+	echo "Umounting the root filesystem..."
+	umount /mnt/root || /bin/sh
+
+	echo "Deactivating Volume Groups..."
+	/sbin/vgchange --activate n vgsys || /bin/sh
+
+	echo "Setup completed. Reboot in 5 seconds."
+	sleep 5
+
+	reboot -f
+	exit 255
+fi
+
+#echo "" > /proc/sys/kernel/hotplug
+
+echo 1 > /proc/sys/kernel/printk
+
+# Clean up.
+umount /proc
+umount /sys
+umount /dev
+
+# Boot the real thing.
+exec switch_root /mnt/root /sbin/init
