@@ -5,12 +5,12 @@ This is a How To memo project that describes setup and configuration of a Gentoo
 The project contains some automation apps to setup a new workstation from a template (auto OS installation). Just plug-in a new workstation in your LAN, in few minutes it ready to use.
 
 ## Used software
-* [OpenLDAP](https://www.openldap.org/) - Provides centralized configuration for your network, users, permissions, etc.
-* [DHCP Server](https://www.isc.org/dhcp/) - Providers auto configuration your network (lease IP addresses)
 * [Apache](https://httpd.apache.org/) - Web server for serve static files and execute CGI scripts
-* [NFS Server](https://en.wikipedia.org/wiki/Network_File_System) - Provides network filesystem
-* [TFTP Server](http://freshmeat.sourceforge.net/projects/tftp-hpa) - Providers ability to load kernel and initramfs via network for [PXE](https://en.wikipedia.org/wiki/Preboot_Execution_Environment). See [Wikipedia](https://en.wikipedia.org/wiki/Trivial_File_Transfer_Protocol) for protocol details.
+* [DHCP Server](https://www.isc.org/dhcp/) - Providers auto configuration your network (lease IP addresses)
 * [Linux SCSI target framework (tgt)](http://stgt.sourceforge.net/) - Provides SAN-boot (boot Windows)
+* [NFS Server](https://en.wikipedia.org/wiki/Network_File_System) - Provides network filesystem (NFS root, diskless Linux
+  workstation)
+* [TFTP Server](http://freshmeat.sourceforge.net/projects/tftp-hpa) - Providers ability to load kernel and initramfs via network for [PXE](https://en.wikipedia.org/wiki/Preboot_Execution_Environment). See [Wikipedia](https://en.wikipedia.org/wiki/Trivial_File_Transfer_Protocol) for protocol details.
 
 ## How to use
 ### Setup
@@ -34,7 +34,7 @@ The project contains some automation apps to setup a new workstation from a temp
 	* `wan` - Your own choose like a DHCP Client, static IP, etc.
 	* `lan` - Predefined IP/Network `192.168.254.254/24` (this IP is used inside all configuration files and CGI scripts)
 	```
-	# /etc/conf.d/net - example for net-misc/netifrc
+	# c - example for net-misc/netifrc
 
 	dns_domain_lo="localdomain"
 	
@@ -61,6 +61,47 @@ The project contains some automation apps to setup a new workstation from a temp
 	127.0.0.1    bootsrv localhost
 	::1          bootsrv localhost
 	```
+1. IP Tables
+
+	Set `SAVE_ON_STOP="no"` in `/etc/conf.d/iptables`
+
+	Make rules config
+	```
+	# /var/lib/iptables/rules-save
+
+	*nat
+	:PREROUTING ACCEPT [0:0]
+	:INPUT ACCEPT [0:0]
+	:OUTPUT ACCEPT [0:0]
+	:POSTROUTING ACCEPT [0:0]
+	[0:0] -A POSTROUTING -j MASQUERADE
+	COMMIT
+
+	*mangle
+	:PREROUTING ACCEPT [0:0]
+	:INPUT ACCEPT [0:0]
+	:FORWARD ACCEPT [0:0]
+	:OUTPUT ACCEPT [0:0]
+	:POSTROUTING ACCEPT [0:0]
+	COMMIT
+
+	*filter
+	:INPUT ACCEPT [0:0]
+	:FORWARD ACCEPT [0:0]
+	:OUTPUT ACCEPT [0:0]
+	COMMIT
+	```
+
+	```
+	rc-update add iptables boot
+	```
+1. Router options
+
+	Set inside `/etc/sysctl.conf`
+	```
+	net.ipv4.ip_forward = 1
+	```
+
 1. Reboot to apply IP configuration
 1. Clone this repo into `/opt/bootsrv`
 	```
@@ -72,10 +113,48 @@ The project contains some automation apps to setup a new workstation from a temp
 	# /etc/conf.d/dhcpd
 	# net-misc/dhcp-4.4.1::gentoo
 
-	DHCPD_CONF=/opt/bootsrv/etc/dhcpd4.conf
-	#DHCPD_CONF=/opt/bootsrv/etc/dhcpd4-ldap.conf
+	DHCPD_CONF=/etc/dhcp/dhcpd.conf
 	DHCPD_IFACE="lan"
 	DHCPD_OPTS="-4"
+	```
+
+	```
+	# /etc/dhcp/dhcpd.conf
+	#
+
+	default-lease-time 3600;
+	max-lease-time 7200;
+	log-facility local5;
+	ddns-update-style none;
+	authoritative;
+
+	subnet 192.168.254.0 netmask 255.255.255.0 {
+		range 192.168.254.150 192.168.254.199;
+		next-server 192.168.254.254;
+		filename "ipxe/miner.undionly.kpxe";
+		option routers 192.168.254.254;
+		option broadcast-address 192.168.254.255;
+		option subnet-mask 255.255.255.0;
+		option domain-name-servers 192.168.254.254;
+	}
+
+
+	host 192.168.254.101.rig01 {
+		hardware ethernet 70:85:c2:22:4d:fd;
+		fixed-address 192.168.254.101;
+	}
+
+	host 192.168.254.102.rig02 {
+		hardware ethernet 70:85:c2:25:0e:b4;
+		fixed-address 192.168.254.102;
+		filename "ipxe/rig02.undionly.kpxe";
+	}
+
+	host 192.168.254.034.PolinaPC {
+		hardware ethernet 20:cf:30:8a:d3:7b;
+		fixed-address 192.168.254.34;
+		filename "pxelinux/pxelinux.0";
+	}
 	```
 
 	```bash
@@ -89,7 +168,8 @@ The project contains some automation apps to setup a new workstation from a temp
 	# /etc/conf.d/in.tftpd
 	# net-ftp/tftp-hpa-5.2-r1::gentoo
 
-	INTFTPD_OPTS="--ipv4 --address 192.168.254.254 --port-range 4096:32767 --secure /opt/bootsrv/tftp/"
+	INTFTPD_PATH="/srv/tftp/"
+	INTFTPD_OPTS="--ipv4 --address 192.168.254.254 --port-range 4096:32767 --secure ${INTFTPD_PATH}"
 	```
 
 	```bash
@@ -97,3 +177,33 @@ The project contains some automation apps to setup a new workstation from a temp
 	rc-update add in.tftpd default
 	```
 
+1. Configure [NFS Server](https://en.wikipedia.org/wiki/Network_File_System) for `lan` interface. This allows to boot NFS-root basedd workstations
+
+	```
+	# /etc/conf.d/rpcbind
+
+	RPCBIND_OPTS="-h 192.168.254.254"
+	```
+
+	```bash
+	/etc/init.d/nfs start
+	rc-update add nfs default
+	```
+
+	```
+	# /etc/exports
+
+	/srv/nfs/home/check 192.168.254.0/24(insecure,sync,rw,no_root_squash,no_subtree_check,no_all_squash)
+	/srv/nfs/home/miner 192.168.254.0/24(insecure,sync,rw,no_root_squash,no_subtree_check,no_all_squash)
+	/srv/nfs/opt        192.168.254.0/24(insecure,sync,ro,no_root_squash,subtree_check,no_all_squash)
+	```
+
+	```
+	exportfs -ra
+	```
+
+1. Configure Apache2
+
+	```
+	rc-update add apache2 default
+	```

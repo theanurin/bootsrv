@@ -63,5 +63,5 @@ slink   /sbin/vgdisplay                         /sbin/lvm                       
 slink   /sbin/vgscan                            /sbin/lvm                           755 0 0
 
 #
-# NOTE: /init and modules will are added automatically
+# NOTE: /init and modules will are added automatically by docker-entrypoint.sh
 #

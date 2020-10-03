@@ -1,4 +1,5 @@
 .data
 .git
+srv/
 .gitignore
 *.md

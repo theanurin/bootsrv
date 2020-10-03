@@ -12,7 +12,8 @@ The project includes:
 ```bash
 # See https://packages.gentoo.org/packages/sys-kernel/gentoo-sources
 #export KERNEL_VERSION=4.19.113
-export KERNEL_VERSION=5.4.28
+#export KERNEL_VERSION=5.4.28
+export KERNEL_VERSION=5.4.48
 export ARCH=i686
 #export ARCH=amd64
 docker build --tag bootsrv-kernel --file docker/${ARCH}/Dockerfile --build-arg KERNEL_VERSION . && \

@@ -10,6 +10,7 @@ app-misc/mc
 app-misc/screen
 app-portage/cpuid2cpuflags
 app-portage/gentoolkit
+net-dns/bind-tools
 net-fs/nfs-utils
 net-ftp/tftp-hpa
 net-misc/dhcp

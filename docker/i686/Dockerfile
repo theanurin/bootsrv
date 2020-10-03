@@ -1,4 +1,4 @@
-ARG GENTOO_DOCKER_BUILD_DATE=20200420
+ARG GENTOO_DOCKER_BUILD_DATE=20200725
 
 
 # Use the empty image with the portage tree as the first stage
